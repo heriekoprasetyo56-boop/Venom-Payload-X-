@@ -6,8 +6,7 @@
     "start": "node index.js"
   },
   "dependencies": {
-    "@whiskeysockets/baileys": "github:HeriKeyzenlocker/baileys-zen",
-    // tambahkan dependensi lain di sini...
+    "@whiskeysockets/baileys": "github:HeriKeyzenlocker/baileys-zen"
   },
   "keywords": ["whatsapp-bot", "automation", "payload", "venom", "baileys-custom"],
   "author": {
